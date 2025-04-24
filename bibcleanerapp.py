@@ -56,21 +56,37 @@ if bib_file:
     # --- TEX Highlight ---
     if tex_file:
         tex_str = tex_file.read().decode('utf-8')
-        def highlight_citations(text, citation_map):
-            def replacer(match):
-                keys = match.group(2).split(',')
-                updated_keys = [citation_map.get(k.strip(), k.strip()) for k in keys]
-                return f"{match.group(1)}{{{' ,'.join(updated_keys)}}}"
-            return re.sub(r'(\\cite\w*\s*\{)([^}]+)\}', replacer, text)
 
-        st.subheader("📄 Fixed .tex File Preview")
+        st.subheader("📄 Side-by-side Preview of Citation Fixes")
+        fixed_lines = []
+        original_lines = tex_str.splitlines()
+
+        for line in original_lines:
+            updated_line = line
+            for old_key, new_key in citation_map.items():
+                pattern = re.compile(rf'(\\cite\w*\s*\{{[^}}]*?)\b{re.escape(old_key)}\b')
+                updated_line = pattern.sub(rf'\1{new_key}', updated_line)
+            if updated_line != line:
+                fixed_lines.append((line, updated_line))
+
+        if fixed_lines:
+            for original, fixed in fixed_lines:
+                st.markdown(f"<div style='margin-bottom:10px;'>
+                <span style='color:gray;'>Original:</span><br>
+                <code style='background:#f8f8f8;padding:2px;'>{original}</code><br>
+                <span style='color:green;'>Fixed:</span><br>
+                <code style='background:#eaffea;padding:2px;'>{fixed}</code>
+                </div>", unsafe_allow_html=True)
+        else:
+            st.info("No citations were changed.")
+
+        # Show full fixed .tex for download
         fixed_tex = tex_str
         for old_key, new_key in citation_map.items():
             pattern = re.compile(rf'(\\cite\w*\s*\{{[^}}]*?)\b{re.escape(old_key)}\b', re.IGNORECASE)
             fixed_tex = pattern.sub(rf'\1{new_key}', fixed_tex)
 
-        st.text_area("Fixed .tex content:", fixed_tex, height=500)
-
+        st.text_area("📜 Full Fixed .tex content:", fixed_tex, height=400)
         st.download_button("📥 Download Fixed .tex", fixed_tex, file_name="fixed_main.tex")
 
     # --- Save Cleaned .bib File ---
